@@ -1,0 +1,60 @@
+# Dependencies and generated output
+node_modules/
+__pycache__/
+*.py[cod]
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.local
+*.key
+*.pem
+*.p12
+*.pfx
+*.enc
+# Runtime data and diagnostics
+*.log
+*.pid
+*.wav
+*.pcm
+*.mv.db
+*.trace.db
+# Editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+/dist/
+/releases/
+/data/
+/audio/
+/meeting.env
+/scan-key
+/credentials*
+/scan-credentials*
+# Local task notes and historical device evidence
+/docs/TODO.md
+/docs/implementation.md
+/docs/testing.md
+/scripts/test-device.py
+
+# Release archives, binary artifacts and local backups
+*.jar
+*.class
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.bak
+*.backup
+*.sqlite
+*.sqlite3
+core
+
+# Device credential material (also excluded from server repository)
+scan-key
+scan-credentials*
+credentials.enc

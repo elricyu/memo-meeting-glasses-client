@@ -1,43 +1,55 @@
-# 安装与升级
+# 安装、升级、回退与卸载
 
-## 准备
+下载 GitHub Release 中的 `memo-meeting-glasses-client-v0.1.0-beta.1.zip` 并完整解压。不要下载 Source code 代替安装包。包内四个程序已编译，无需 Go、SDK 或交叉编译器。
 
-需要支持的 RV1106B 开源眼镜、USB 数据线、可用 ADB、Bash、Python 3，以及构建好的四个程序。确认固件原有网络和语音服务正常。
+## 电脑与设备准备
 
-在仓库或安装包根目录执行 `adb devices`，明确选择目标：
+- 安装 Python 3.9+ 和 Android SDK Platform Tools（ADB），确保它们在 PATH。
+- Windows 使用 PowerShell；Linux/macOS 使用 Bash。
+- 眼镜已联网，固件原有语音 AI 服务正常，设备时间正确。
+- USB 连接后执行 `adb devices`。只有一台可用设备时自动选择；有多台时传入 `--serial 设备序列号`。
 
-```bash
-export ADB_SERIAL=你的设备序列号
-```
+推荐先使用 Release 附带的 `SHA256SUMS` 校验 ZIP：Linux 使用 `sha256sum -c SHA256SUMS`，macOS 使用 `shasum -a 256 -c SHA256SUMS`，Windows 使用 `Get-FileHash 文件.zip -Algorithm SHA256` 并比对。安装工具还会检查解压包内的文件清单。
 
-安装工具不会重刷固件。不要在正在录音时升级；脚本会拒绝已检测到的活动录音。
+## 安装
 
-## 首次配置
-
-复制 `device/meeting.env.example` 为本地 `meeting.env`。模板默认连接 [线上实例](https://memo-meeting.easymr.cn)，使用该实例无需修改服务地址；若自行部署 `memo-meeting-server`，将 `MEMO_SERVER` 改为自己的 HTTPS 服务地址。眼镜上的 localhost 指眼镜自身。配置文件是 shell 配置，仅加载可信内容，不放 AI Key。
-
-`MEMO_CA_FILE` 指向设备上的 PEM 格式可信 CA 文件。没有系统证书库时，准备包含服务证书所需根 CA 的可信证书包 `ca-certificates.crt`；不要关闭 TLS 校验。设备时间需正确。
+在解压目录执行：
 
 ```bash
-adb -s "$ADB_SERIAL" shell mkdir -p /userdata/apps/memo-meeting
-adb -s "$ADB_SERIAL" push meeting.env /userdata/apps/memo-meeting/meeting.env
-adb -s "$ADB_SERIAL" push ca-certificates.crt /userdata/apps/memo-meeting/ca-certificates.crt
-bash scripts/deploy.sh
-bash scripts/install-voice.sh
+# Linux / macOS
+bash install.sh install
 ```
 
-若使用设备已有的可信证书库，按实际情况调整配置，省略上述 CA 上传步骤。四个程序必须已经位于 `dist/`。
+```powershell
+# Windows
+powershell -ExecutionPolicy Bypass -File .\install.ps1 install
+```
 
-注册后需重新建立固件原有 AI 语音连接，使新函数清单上报；安装脚本不重启设备。然后按用户指南扫码绑定。
+默认连接 [线上实例](https://memo-meeting.easymr.cn)，随包提供服务配置和可信 CA。安装会检查硬件接口、可用空间、交互状态及设备到服务器的 HTTPS 连接；合并会议语音函数，保留原功能。不会重刷固件、修改原固件源码或重启设备，也不会创建会议或开启录音。
 
-## 检查与升级
+首次安装也会启动本应用后台服务。出现 `MEMO_MANAGE_OK install` 表示完成；随后重新建立固件原有 AI 语音连接，让新函数清单上报。注册网站账号并扫码绑定，见 [用户指南](user-guide.md)。
+
+自部署只在首次安装时指定：
 
 ```bash
-adb -s "$ADB_SERIAL" shell /userdata/apps/memo-meeting/memo-glasses status
+bash install.sh install --server https://meeting.example.com --ca /path/to/trusted-ca.crt
 ```
 
-日常开启脚本会按需启动服务，不自动恢复上次录音。新版构建完成后重复部署与注册，保留已有配置、凭证及录音。现有脚本仅保留首次更新前的主程序副本，不是完整的版本回退机制；正式安装包发布前需补齐完整备份与回退。
+CA 必须是可信 PEM 证书包，不是私钥。已有应用的升级保留原 `meeting.env` 和 CA，不用安装参数覆盖；需换服务时由设备维护者另行修改配置并重新绑定。
 
-服务日志为设备上的 `service.log`，录音在 `audio/`。日志和录音可能含个人信息，请勿直接上传到公开 Issue。
+## 管理
 
-当前没有自动卸载工具；不要直接删除整个目录，以免丢失录音。卸载需要先停止本应用、仅移除本应用三个语音函数，再按是否保留数据决定清理哪些文件。
+```bash
+bash install.sh check       # 查看本机应用状态
+bash install.sh upgrade     # 升级并保留账号凭证、服务配置和录音
+bash install.sh rollback    # 恢复最近一次操作前的程序、配置和会议语音函数
+bash install.sh uninstall   # 停止并移除程序与会议语音函数，保留录音和凭证
+```
+
+Windows 使用同样的操作参数替换 `install.sh` 为 `install.ps1`。正在录音、绑定或控制接口异常时拒绝更新；多台设备必须指定 `--serial`。
+
+应用备份位于 `/userdata/apps/memo-meeting/.rollback/`，另保留一层 `.rollback.old/`。回退只恢复本应用拥有的语音函数，保留其他应用的当前条目；首次安装前没有旧版本时不能回退到不存在的程序。卸载后可用回退恢复最近版本。卸载不删除 WAV、凭证或备份，彻底清除敏感数据需由用户单独处理。
+
+失败时安装工具尝试恢复本次操作前的程序和语音配置，并保留 `.stage-*` 事务目录用于排查。不要在失败原因未明确前删除备份。服务日志为 `service.log`，本地录音位于 `audio/`；公开反馈前需脱敏。
+
+GitHub 安装包是 Beta 版本；真实拾音与语音意图效果受原固件和云端服务影响。断网不会自动补传。

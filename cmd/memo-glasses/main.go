@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+var buildVersion = "development"
+
 func main() {
 	if err := run(); err != nil {
 		slog.Error("command_failed", "reason", err.Error())
@@ -45,6 +47,10 @@ func main() {
 	}
 }
 func run() error {
+	if len(os.Args) == 2 && os.Args[1] == "version" {
+		fmt.Println(buildVersion)
+		return nil
+	}
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, nil)))
 	if len(os.Args) < 2 {
 		fmt.Println("memo-glasses serve|open|start|stop|status|transcript|scan-binding|pair|unlock|binding|check|record|probe [options]")

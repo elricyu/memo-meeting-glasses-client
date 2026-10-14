@@ -30,9 +30,9 @@
 
 ## 安装和使用
 
-预编译安装包将在 GitHub Releases 提供；当前目录中的 `dist/` 是本地构建产物，不提交源码仓库。安装步骤见 [安装说明](docs/install.md)，日常使用见 [用户指南](docs/user-guide.md)。
+预编译 Beta 安装包在 [GitHub Releases](https://github.com/elricyu/memo-meeting-glasses-client/releases) 提供。下载 ZIP 并完整解压，运行 `bash install.sh install`（Linux/macOS）或 `powershell -ExecutionPolicy Bypass -File .\install.ps1 install`（Windows）。`dist/` 构建产物不提交源码仓库。安装步骤见 [安装说明](docs/install.md)，日常使用见 [用户指南](docs/user-guide.md)。
 
-当前脚本需要 Linux/macOS 或具备 Bash 的电脑、ADB 和 Python 3。配置模板已使用上述线上实例地址；首次安装需安装服务配置与可信 CA，再部署程序和注册语音函数。暂未提供 Windows 原生安装器。
+电脑需要 ADB 和 Python 3.9+；Windows 提供 PowerShell 入口，Linux/macOS 提供 Bash 入口。完整 Release 安装包包含默认服务配置、可信 CA、程序及语音函数，一次安装后注册账号并扫码绑定即可使用。支持升级、回退和保留数据卸载。
 
 ## 从源码构建
 
@@ -53,4 +53,4 @@ make camera notify media CAMERA_CC=/path/to/arm-rockchip831-linux-uclibcgnueabih
 
 ## 许可
 
-本项目原创代码采用 [Apache License 2.0](LICENSE)。眼镜固件、SDK 和工具链不包含在本仓库中，适用各自许可。预编译包包含链接 SDK 的组件，分发前需核实 SDK 的再分发条款。
+本项目原创代码采用 [Apache License 2.0](LICENSE)。眼镜固件、SDK 和工具链不包含在本仓库中，适用各自许可。预编译包包含链接上游 Apache-2.0 SDK 的组件，并附带第三方许可文本和构建来源。

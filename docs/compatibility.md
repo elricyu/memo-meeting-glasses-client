@@ -1,14 +1,16 @@
-# 固件兼容性
+# 固件兼容性与构建来源
 
-本项目只针对 RV1106B 开源眼镜，不提供其他设备适配承诺。依赖当前固件接口：
+本项目针对 [OpenSource-Ai-Glasses](https://github.com/Iam5tillLearning/OpenSource-Ai-Glasses) 的 RV1106B 开源眼镜。使用以下固件接口：
 
 - `/tmp/ai-core_audio_stream`：AASF v1 音频镜像，AF_UNIX / SOCK_SEQPACKET。
 - 现有相机 JPEG 抓拍 IPC。
 - SDK `ai_audio_play_toast_text`、GPIO hub 客户端。
-- `/tmp/ai-core_audio_ctrl` 的 `PLAYBACK_STATUS` 查询。
-- `/usr/share/ai_core_device_functions.conf` 的语音函数配置及脚本执行。
-- 可写的 `/userdata/apps/`、BusyBox、ADB 和可用 HTTPS/设备时钟。
+- `/tmp/ai-core_audio_ctrl` 的 `PLAYBACK_STATUS`。
+- `/usr/share/ai_core_device_functions.conf` 语音函数注册与执行。
+- BusyBox、可写 `/userdata/apps/`、ADB、可信 CA 和正确设备时间。
 
-具体接口实现见 `device/*.c` 和 `internal/client/`。主程序不依赖 Go 运行时安装；C 程序需要与固件 ABI 匹配的交叉工具链。
+Beta 构建使用上游提交 `dbc981216b8ef5525d8ce7d0cc5914db606ab6e0` 中的 SDK（版本 0.7.2），工具链为 `arm-rockchip831-linux-uclibcgnueabihf`。完整校验值与编译器版本记录于安装包 `BUILD.json`。
 
-正式二进制发布前，须记录原眼镜项目 URL、固件版本或提交号、SDK 版本/校验值及工具链版本。目前仓库未获得可核实的上游版本标识，因此不宣称任意该型号固件均已验证。不要提交整个 SDK 或固件树。
+真机系统标识为 `Buildroot 2025.08-git`、ARMv7、`/lib/ld-uClibc.so.0`。当前设备未提供可核实的固件 Release 版本号，因此此 Beta 不宣称已验证所有上游固件版本；安装器会检查运行接口并在失败时恢复旧程序。
+
+C 辅助组件动态依赖固件自带 uClibc，安装包不替换系统库。SDK 的静态库按上游 Apache-2.0 许可链接，随包保留许可和版权声明。上游固件更新后仍需重新验收音频镜像、GPIO hub、相机和播放状态兼容性。

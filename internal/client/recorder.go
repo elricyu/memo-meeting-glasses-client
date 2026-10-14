@@ -282,7 +282,6 @@ func (r *Recorder) record(ctx context.Context, title, terms string) error {
 	r.status.State = "recording"
 	r.mu.Unlock()
 	slog.Info("recording_ready", "meeting_id", id, "sample_rate", first.Rate)
-	r.notify(notice)
 	received := make(chan error, 1)
 	go func() {
 		for {
@@ -411,6 +410,9 @@ func (r *Recorder) record(ctx context.Context, title, terms string) error {
 		}
 		return flushHeld(false)
 	}
+	// Firmware toast calls can block while the mirror keeps producing audio.
+	// Readers and sender must keep running; stop cancels a pending announcement.
+	go r.notifyContext(ctx, notice)
 	filterTick := time.NewTicker(40 * time.Millisecond)
 	defer filterTick.Stop()
 	for {

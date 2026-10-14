@@ -20,7 +20,11 @@ func TestRecorderCompletesAndRequestsSummary(t *testing.T) {
 	}
 }
 func TestRecordingRejectionDoesNotAnnounceSuccess(t *testing.T) { testRecorderFlow(t, false, true) }
-func testRecorderFlow(t *testing.T, mask, reject bool) {
+func TestSlowStartupAnnouncementDoesNotBacklogMirror(t *testing.T) {
+	testRecorderFlow(t, false, false, true)
+}
+
+func testRecorderFlow(t *testing.T, mask, reject bool, slow ...bool) {
 	mirrorPath := filepath.Join(t.TempDir(), "mirror.sock")
 	listener, err := net.ListenUnix("unixpacket", &net.UnixAddr{Name: mirrorPath, Net: "unixpacket"})
 	if err != nil {
@@ -153,7 +157,11 @@ func testRecorderFlow(t *testing.T, mask, reject bool) {
 	noticeRoot := t.TempDir()
 	notices := filepath.Join(noticeRoot, "notices")
 	notify := filepath.Join(noticeRoot, "notify")
-	os.WriteFile(notify, []byte("#!/bin/sh\nprintf '%s\\n' \"$1\" >> '"+notices+"'\n"), 0700)
+	noticeScript := "#!/bin/sh\nprintf '%s\\n' \"$1\" >> '" + notices + "'\n"
+	if len(slow) > 0 && slow[0] {
+		noticeScript += "sleep 1\n"
+	}
+	os.WriteFile(notify, []byte(noticeScript), 0700)
 	recorder, err := NewRecorder(Options{NotifyHelper: notify, MediaMonitor: helper, Server: server.URL, Mirror: mirrorPath, DataDir: t.TempDir(), DeviceToken: "test-device"})
 	if err != nil {
 		t.Fatal(err)

@@ -46,6 +46,7 @@ type Recorder struct {
 	binding        Binding
 	scanMode       bool
 	scanning       bool
+	bindingNotice  bool
 }
 
 func NewRecorder(options Options) (*Recorder, error) {
@@ -109,7 +110,7 @@ func (r *Recorder) Start(title, terms string) error {
 		case "PENDING":
 			return errors.New("请先在网页确认绑定，再打开会议记录")
 		default:
-			return errors.New("请先扫码绑定会议账号：在网页生成二维码，看向二维码并说绑定会议账号，网页确认后再打开会议记录")
+			return errors.New("请先打开会议记录，听取验证码后在网页绑定眼镜")
 		}
 	}
 	if r.cancel != nil {
@@ -263,8 +264,6 @@ func (r *Recorder) record(ctx context.Context, title, terms string) error {
 		return errors.New("unsupported protocol or nonzero offset for a new meeting")
 	}
 	socket.SetReadDeadline(time.Time{})
-	r.update(func(s *Status) { s.State = "recording" })
-	slog.Info("recording_ready", "meeting_id", id, "sample_rate", first.Rate)
 	// Drain old startup frames so the first transmitted frame reflects current speech.
 	mirror.SetReadDeadline(time.Now())
 	// A new subscription drops stale frames accumulated while the cloud connected.
@@ -274,6 +273,16 @@ func (r *Recorder) record(ctx context.Context, title, terms string) error {
 		return err
 	}
 	defer mirror.Close()
+	r.mu.Lock()
+	notice := "recording-started"
+	if r.bindingNotice {
+		notice = "binding-recording-started"
+	}
+	r.bindingNotice = false
+	r.status.State = "recording"
+	r.mu.Unlock()
+	slog.Info("recording_ready", "meeting_id", id, "sample_rate", first.Rate)
+	r.notify(notice)
 	received := make(chan error, 1)
 	go func() {
 		for {

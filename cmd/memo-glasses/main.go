@@ -24,14 +24,14 @@ func main() {
 	if err := run(); err != nil {
 		slog.Error("command_failed", "reason", err.Error())
 		if len(os.Args) > 1 && (os.Args[1] == "start" || os.Args[1] == "open" || os.Args[1] == "scan-binding") {
-			guidance := ""
+			guidance := "start-failed"
 			if strings.Contains(err.Error(), "请先扫码绑定会议账号") {
 				guidance = "bind-required"
 			} else if strings.Contains(err.Error(), "请先在网页确认绑定") {
 				guidance = "confirm-binding"
 			} else if strings.Contains(err.Error(), "无法连接会议服务器") {
 				guidance = "network-failed"
-			} else if strings.Contains(err.Error(), "等待网页确认绑定超时") {
+			} else if strings.Contains(err.Error(), "等待验证码绑定超时") {
 				guidance = "confirm-timeout"
 			}
 			if guidance != "" {
@@ -118,7 +118,7 @@ func run() error {
 		}
 		return json.NewEncoder(os.Stdout).Encode(map[string]any{"packets": packets, "samples": samples, "sampleRate": rate, "peak": peak, "durationMs": samples * 1000 / uint64(rate), "wallMs": time.Since(started).Milliseconds(), "captureSpanMs": (lastCapture - firstCapture) / 1000, "firstSeq": firstSeq, "lastSeq": lastSeq, "firstCaptureUs": firstCapture})
 	}
-	if command == "open" {
+	if command == "open" || command == "scan-binding" {
 		req, err := http.NewRequest(http.MethodPost, "http://"+*address+"/prepare-open", nil)
 		if err != nil {
 			return err
@@ -149,26 +149,22 @@ func run() error {
 			return fmt.Errorf("打开准备返回无效")
 		}
 		switch preparation.Action {
-		case "SCAN", "CONFIRM":
+		case "CODE", "SCAN", "CONFIRM":
 			if preparation.Guidance == "rebind-required" || preparation.Guidance == "confirm-binding" {
 				client.Notify(preparation.Guidance)
 			}
-			if err := client.WaitBound(context.Background(), "http://"+*address, 240*time.Second); err != nil {
+			if err := client.WaitBound(context.Background(), "http://"+*address, 15*time.Minute); err != nil {
 				return err
 			}
-			client.Notify("binding-success")
 		case "RECORD":
 		default:
 			return fmt.Errorf("服务器返回未知打开动作")
 		}
 		command = "start"
 	}
-	if command == "scan-binding" || command == "start" || command == "stop" || command == "status" || command == "transcript" || command == "pair" || command == "unlock" || command == "binding" {
+	if command == "start" || command == "stop" || command == "status" || command == "transcript" || command == "pair" || command == "unlock" || command == "binding" {
 		method, path := http.MethodGet, "/status"
 		var body []byte
-		if command == "scan-binding" {
-			method, path = http.MethodPost, "/scan-binding"
-		}
 		if command == "transcript" {
 			path = "/transcript"
 		}
@@ -207,13 +203,6 @@ func run() error {
 		output, _ := io.ReadAll(io.LimitReader(response.Body, 256*1024))
 		if response.StatusCode >= 400 {
 			return fmt.Errorf("control rejected (%d): %s", response.StatusCode, output)
-		}
-		if command == "scan-binding" {
-			if err := client.WaitBound(context.Background(), "http://"+*address, 240*time.Second); err != nil {
-				return err
-			}
-			client.Notify("binding-success")
-			return nil
 		}
 		if command == "start" && *waitReady {
 			status, err := client.WaitReady(context.Background(), "http://"+*address, 50*time.Second)

@@ -21,7 +21,7 @@ func Handler(recorder *Recorder) http.Handler {
 		json.NewEncoder(w).Encode(value)
 	})
 	mux.HandleFunc("POST /scan-binding", func(w http.ResponseWriter, r *http.Request) {
-		value, err := recorder.BeginScan()
+		value, err := recorder.BeginCode()
 		if err != nil {
 			http.Error(w, err.Error(), 409)
 			return

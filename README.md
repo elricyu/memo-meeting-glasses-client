@@ -2,11 +2,11 @@
 
 专为 [OpenSource-Ai-Glasses](https://github.com/Iam5tillLearning/OpenSource-Ai-Glasses) 项目的 RV1106B 开源眼镜编写的 ARM Linux 会议记录应用，使用现有固件的音频镜像、相机和语音设备函数。原有物理按钮交互保留，安装无需重刷固件。
 
-配套服务及网页在独立 [memo-meeting-server](https://github.com/elricyu/memo-meeting-server) 仓库维护。用户在网页扫码绑定账号，再通过“打开会议记录 / 关闭会议记录”控制录音。
+配套服务及网页在独立 [memo-meeting-server](https://github.com/elricyu/memo-meeting-server) 仓库维护。用户在网页输入眼镜播报的四位验证码绑定账号，再通过“打开会议记录 / 关闭会议记录”控制录音。
 
 ## 默认线上服务
 
-眼镜客户端默认连接 [https://memo-meeting.easymr.cn](https://memo-meeting.easymr.cn)。安装应用后，在网站注册账号，在「我的眼镜」生成二维码并完成扫码确认绑定，即可使用“打开会议记录 / 关闭会议记录”。使用此实例无需自行部署后端或填写 AI Key。
+眼镜客户端默认连接 [https://memo-meeting.easymr.cn](https://memo-meeting.easymr.cn)。安装应用后，在网站注册账号，让眼镜“打开会议记录”，在「我的眼镜」输入眼镜播报的四位验证码绑定，即可使用“打开会议记录 / 关闭会议记录”。使用此实例无需自行部署后端或填写 AI Key。
 
 如需使用自己的服务，可以部署 [memo-meeting-server](https://github.com/elricyu/memo-meeting-server)，将设备 `meeting.env` 中的 `MEMO_SERVER` 改为自己的 HTTPS 服务地址，并配置对应可信 CA。账号与设备绑定在所连接的服务端管理，更换实例后需在新实例注册账号并绑定眼镜。
 
@@ -21,7 +21,7 @@
 ## 能力与要求
 
 - 音频镜像采集、G711A 解码、16kHz 单声道 PCM16 上传、本地 WAV 保存。
-- 扫码绑定、网页确认、凭证自动恢复、解绑失效。
+- 四位验证码绑定、过期自动换码播报、凭证自动恢复、解绑失效。
 - 录音就绪与停止保存确认；按键/播放状态过滤。
 
 目标系统为 RV1106B / Buildroot / ARMv7 Linux，不是 Android APK。固件需提供音频镜像、相机抓拍、GPIO hub、播放状态和设备函数执行接口；仅芯片相同不能证明固件兼容。具体要求见 [兼容性说明](docs/compatibility.md)。
@@ -32,7 +32,7 @@
 
 预编译 Beta 安装包在 [GitHub Releases](https://github.com/elricyu/memo-meeting-glasses-client/releases) 提供。下载 ZIP 并完整解压，运行 `bash install.sh install`（Linux/macOS）或 `powershell -ExecutionPolicy Bypass -File .\install.ps1 install`（Windows）。`dist/` 构建产物不提交源码仓库。安装步骤见 [安装说明](docs/install.md)，日常使用见 [用户指南](docs/user-guide.md)。
 
-安装电脑的日期时间须正确。Beta.2 在眼镜空闲时通过 USB 校正异常的 UTC 时间，再执行 HTTPS 证书验证。电脑需要 ADB 和 Python 3.9+；Windows 提供 PowerShell 入口，Linux/macOS 提供 Bash 入口。完整 Release 安装包包含默认服务配置、可信 CA、程序及语音函数，一次安装后注册账号并扫码绑定即可使用。支持升级、回退和保留数据卸载。
+安装电脑的日期时间须正确。Beta.2 及之后版本在眼镜空闲时通过 USB 校正异常的 UTC 时间，再执行 HTTPS 证书验证。电脑需要 ADB 和 Python 3.9+；Windows 提供 PowerShell 入口，Linux/macOS 提供 Bash 入口。完整 Release 安装包包含默认服务配置、可信 CA、程序及语音函数，一次安装后注册账号并输入验证码绑定即可使用。支持升级、回退和保留数据卸载。
 
 ## 从源码构建
 

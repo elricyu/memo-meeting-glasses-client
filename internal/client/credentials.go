@@ -22,6 +22,9 @@ import (
 
 // No credential or unlock password is written as plaintext on the glasses.
 type credential struct {
+	CodeBinding bool   `json:"codeBinding,omitempty"`
+	PairingCode string `json:"pairingCode,omitempty"`
+	ExpiresAt   string `json:"expiresAt,omitempty"`
 	Server      string `json:"server"`
 	ClientID    string `json:"clientId"`
 	MAC         string `json:"mac"`
@@ -214,11 +217,17 @@ func (r *Recorder) initiatePairingLocked() (Binding, error) {
 	if err = json.NewDecoder(io.LimitReader(response.Body, 16384)).Decode(&result); err != nil || result.PairingID == "" || result.PairingCode == "" {
 		return Binding{}, errors.New("绑定服务返回无效数据")
 	}
+	renewed := value.PairingID != ""
 	value.PairingID = result.PairingID
+	value.PairingCode = result.PairingCode
+	value.ExpiresAt = result.ExpiresAt
 	if err = r.saveCredential(*value, r.unlockPassword, false); err != nil {
 		return Binding{}, err
 	}
 	r.binding = Binding{State: "PENDING", PairingCode: result.PairingCode, ExpiresAt: result.ExpiresAt, DeviceID: result.DeviceID}
+	if value.CodeBinding {
+		r.notifyCode(renewed)
+	}
 	return r.binding, nil
 }
 func (r *Recorder) RefreshBinding() (Binding, error) {
@@ -234,7 +243,7 @@ func (r *Recorder) refreshBindingLocked() (Binding, error) {
 		return Binding{State: "LOCKED"}, nil
 	}
 	if r.credential.PairingID == "" {
-		if r.scanMode {
+		if r.scanMode && !r.credential.CodeBinding {
 			return r.recoverScanLocked()
 		}
 		return r.initiatePairingLocked()
@@ -256,8 +265,16 @@ func (r *Recorder) refreshBindingLocked() (Binding, error) {
 	if err = json.NewDecoder(io.LimitReader(response.Body, 16384)).Decode(&result); err != nil {
 		return Binding{}, errors.New("绑定状态格式错误")
 	}
+	if result.Status == "EXPIRED" && r.credential.CodeBinding {
+		return r.initiatePairingLocked()
+	}
+	r.binding.PairingCode = r.credential.PairingCode
+	r.binding.ExpiresAt = r.credential.ExpiresAt
 	r.binding.State = result.Status
 	r.binding.DeviceID = result.DeviceID
+	if result.Status == "BOUND" || result.Status == "REVOKED" {
+		r.binding.PairingCode = ""
+	}
 	if r.cancel == nil {
 		if result.Status == "BOUND" {
 			r.options.DeviceToken = r.credential.DeviceToken

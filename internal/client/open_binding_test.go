@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func TestOpenChecksServerThenScansWithFeedbackWithoutStartingRecording(t *testing.T) {
+func TestOpenChecksServerThenIssuesCodeWithoutStartingRecording(t *testing.T) {
 	var checks, claims atomic.Int32
 	var confirmed atomic.Bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -20,12 +20,12 @@ func TestOpenChecksServerThenScansWithFeedbackWithoutStartingRecording(t *testin
 		case "/api/v1/devices/binding-claims/check":
 			checks.Add(1)
 			json.NewEncoder(w).Encode(map[string]string{"state": "UNBOUND"})
-		case "/api/v1/devices/binding-claims/scan":
+		case "/api/v1/devices/pairings":
 			if checks.Load() == 0 {
-				t.Error("scan preceded server check")
+				t.Error("pairing preceded server check")
 			}
 			claims.Add(1)
-			json.NewEncoder(w).Encode(map[string]string{"pairingId": "open-test-pair", "deviceId": "device", "expiresAt": "2099-01-01T00:00:00Z"})
+			json.NewEncoder(w).Encode(map[string]string{"pairingCode": "0382", "pairingId": "open-test-pair", "deviceId": "device", "expiresAt": "2099-01-01T00:00:00Z"})
 		case "/api/v1/devices/pairings/open-test-pair":
 			state := "PENDING"
 			if confirmed.Load() {
@@ -49,8 +49,8 @@ func TestOpenChecksServerThenScansWithFeedbackWithoutStartingRecording(t *testin
 		t.Fatal(err)
 	}
 	preparation, err := recorder.prepareOpen("client", "02:11:22:33:44:55", "")
-	if err != nil || preparation.Action != "SCAN" {
-		t.Fatalf("no scan preparation: %+v %v", preparation, err)
+	if err != nil || preparation.Action != "CODE" {
+		t.Fatalf("no code preparation: %+v %v", preparation, err)
 	}
 	for i := 0; i < 200; i++ {
 		recorder.mu.Lock()
@@ -65,7 +65,7 @@ func TestOpenChecksServerThenScansWithFeedbackWithoutStartingRecording(t *testin
 		t.Fatal("recording created before confirmation")
 	}
 	data, _ := os.ReadFile(events)
-	if !strings.Contains(string(data), "scan-start") || !strings.Contains(string(data), "scan-recognized") {
+	if !strings.Contains(string(data), "binding-code") {
 		t.Fatalf("missing feedback: %s", data)
 	}
 	if err = recorder.Start("test", ""); err == nil {

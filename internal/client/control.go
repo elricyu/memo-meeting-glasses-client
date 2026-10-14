@@ -49,7 +49,7 @@ func WaitReady(ctx context.Context, origin string, timeout time.Duration) (Statu
 func WaitBound(ctx context.Context, origin string, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(3 * time.Second)
 	defer ticker.Stop()
 	for {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, origin+"/binding", nil)
@@ -73,11 +73,11 @@ func WaitBound(ctx context.Context, origin string, timeout time.Duration) error 
 			if value.Error != "" {
 				return errors.New(value.Error)
 			}
-			return errors.New("扫码未完成，请重新生成二维码、调整距离并重试")
+			return errors.New("绑定未完成，请重新打开会议记录并填写最新验证码")
 		}
 		select {
 		case <-ctx.Done():
-			return errors.New("等待网页确认绑定超时，请在网页查看申请状态")
+			return errors.New("等待验证码绑定超时，请重新打开会议记录后在网页输入验证码")
 		case <-ticker.C:
 		}
 	}

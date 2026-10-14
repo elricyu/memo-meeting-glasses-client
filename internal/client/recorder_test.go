@@ -16,10 +16,11 @@ import (
 
 func TestRecorderCompletesAndRequestsSummary(t *testing.T) {
 	for _, mask := range []bool{false, true} {
-		t.Run(map[bool]string{false: "normal audio", true: "device playback masked"}[mask], func(t *testing.T) { testRecorderFlow(t, mask) })
+		t.Run(map[bool]string{false: "normal audio", true: "device playback masked"}[mask], func(t *testing.T) { testRecorderFlow(t, mask, false) })
 	}
 }
-func testRecorderFlow(t *testing.T, mask bool) {
+func TestRecordingRejectionDoesNotAnnounceSuccess(t *testing.T) { testRecorderFlow(t, false, true) }
+func testRecorderFlow(t *testing.T, mask, reject bool) {
 	mirrorPath := filepath.Join(t.TempDir(), "mirror.sock")
 	listener, err := net.ListenUnix("unixpacket", &net.UnixAddr{Name: mirrorPath, Net: "unixpacket"})
 	if err != nil {
@@ -105,6 +106,10 @@ func testRecorderFlow(t *testing.T, mask bool) {
 		if first["protocolVersion"] != float64(1) {
 			t.Error("invalid handshake")
 		}
+		if reject {
+			c.WriteJSON(map[string]any{"type": "error", "message": "ASR unavailable"})
+			return
+		}
 		c.WriteJSON(map[string]any{"type": "ready", "protocolVersion": 1, "offsetBytes": 0})
 		var seq uint32
 		var offset uint64
@@ -145,12 +150,29 @@ func testRecorderFlow(t *testing.T, mask bool) {
 			t.Fatal(err)
 		}
 	}
-	recorder, err := NewRecorder(Options{MediaMonitor: helper, Server: server.URL, Mirror: mirrorPath, DataDir: t.TempDir(), DeviceToken: "test-device"})
+	noticeRoot := t.TempDir()
+	notices := filepath.Join(noticeRoot, "notices")
+	notify := filepath.Join(noticeRoot, "notify")
+	os.WriteFile(notify, []byte("#!/bin/sh\nprintf '%s\\n' \"$1\" >> '"+notices+"'\n"), 0700)
+	recorder, err := NewRecorder(Options{NotifyHelper: notify, MediaMonitor: helper, Server: server.URL, Mirror: mirrorPath, DataDir: t.TempDir(), DeviceToken: "test-device"})
 	if err != nil {
 		t.Fatal(err)
 	}
+	recorder.bindingNotice = mask
 	if err = recorder.Start("测试会议", ""); err != nil {
 		t.Fatal(err)
+	}
+	if reject {
+		for i := 0; i < 100 && recorder.Status().State != "interrupted"; i++ {
+			time.Sleep(20 * time.Millisecond)
+		}
+		if recorder.Status().State != "interrupted" {
+			t.Fatal("recording rejection was not reported")
+		}
+		if data, _ := os.ReadFile(notices); len(data) != 0 {
+			t.Fatalf("announced success after failure: %s", data)
+		}
+		return
 	}
 	for i := 0; i < 100 && recorder.Status().Bytes < 2048; i++ {
 		time.Sleep(20 * time.Millisecond)
@@ -160,6 +182,14 @@ func testRecorderFlow(t *testing.T, mask bool) {
 	}
 	if err = recorder.Stop(); err != nil {
 		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(notices)
+	expected := "recording-started\n"
+	if mask {
+		expected = "binding-recording-started\n"
+	}
+	if string(data) != expected {
+		t.Fatalf("incorrect recording feedback: %q", data)
 	}
 	status := recorder.Status()
 	if status.State != "completed" || status.Bytes == 0 || uploaded.Load() != int64(status.Bytes) || !summary.Load() {

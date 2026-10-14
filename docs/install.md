@@ -1,6 +1,6 @@
 # 安装、升级、回退与卸载
 
-下载 GitHub Release 中的 `memo-meeting-glasses-client-v0.1.0-beta.2.zip` 并完整解压。不要下载 Source code 代替安装包。包内四个程序已编译，无需 Go、SDK 或交叉编译器。
+下载 GitHub Release 中的 `memo-meeting-glasses-client-v0.1.0-beta.3.zip` 并完整解压。不要下载 Source code 代替安装包。包内四个程序已编译，无需 Go、SDK 或交叉编译器。
 
 ## 电脑与设备准备
 
@@ -27,7 +27,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 install
 
 默认连接 [线上实例](https://memo-meeting.easymr.cn)，随包提供服务配置和可信 CA。安装会检查硬件接口、可用空间和交互状态；设备空闲且与电脑时间偏差超过 5 分钟时，通过 USB 使用电脑 UTC 校时，再检查设备到服务器的 HTTPS 连接；合并会议语音函数，保留原功能。不会重刷固件、修改原固件源码或重启设备，也不会创建会议或开启录音。
 
-首次安装也会启动本应用后台服务。出现 `MEMO_MANAGE_OK install` 表示完成；随后重新建立固件原有 AI 语音连接，让新函数清单上报。注册网站账号并扫码绑定，见 [用户指南](user-guide.md)。
+首次安装也会启动本应用后台服务。出现 `MEMO_MANAGE_OK install` 表示完成；随后重新建立固件原有 AI 语音连接，让新函数清单上报。注册网站账号并输入眼镜播报的验证码绑定，见 [用户指南](user-guide.md)。
 
 自部署只在首次安装时指定：
 

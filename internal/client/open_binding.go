@@ -10,8 +10,7 @@ import (
 	"time"
 )
 
-// Opening is an explicit user intent. Binding confirmation is still required;
-// no meeting is created while this preparation is scanning or waiting.
+// Opening is an explicit user intent. No meeting starts before code binding succeeds.
 type OpenPreparation struct {
 	State    string `json:"state"`
 	Action   string `json:"action"`
@@ -81,15 +80,15 @@ func (r *Recorder) prepareOpen(cid, mac, token string) (OpenPreparation, error) 
 	if state == "BOUND" {
 		return OpenPreparation{State: state, Action: "RECORD"}, nil
 	}
-	if state == "PENDING" {
-		return OpenPreparation{State: state, Action: "CONFIRM", Guidance: "confirm-binding"}, nil
+	if state == "REBIND_REQUIRED" {
+		return OpenPreparation{}, errors.New("设备凭证不可用，请先在原账号解绑设备，尚未开始录音")
 	}
-	if _, err = r.beginScan(cid, mac); err != nil {
+	binding, err := r.beginCode(cid, mac)
+	if err != nil {
 		return OpenPreparation{}, err
 	}
-	guidance := "bind-required"
-	if state == "REBIND_REQUIRED" {
-		guidance = "rebind-required"
+	if binding.State == "BOUND" {
+		return OpenPreparation{State: "BOUND", Action: "RECORD"}, nil
 	}
-	return OpenPreparation{State: state, Action: "SCAN", Guidance: guidance}, nil
+	return OpenPreparation{State: "PENDING", Action: "CODE"}, nil
 }

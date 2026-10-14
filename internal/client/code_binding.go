@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"time"
 )
 
 // BeginCode keeps the old control endpoint usable without activating the camera.
@@ -14,12 +15,18 @@ func (r *Recorder) BeginCode() (Binding, error) {
 	}
 	return r.beginCode(cid, mac)
 }
+
+const codeReplayInterval = 30 * time.Second
+
 func (r *Recorder) beginCode(cid, mac string) (Binding, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.cancel != nil || r.scanning {
 		return Binding{}, errors.New("会议记录或旧绑定正在运行")
 	}
+	// An explicit opening arms reminders; restoration alone stays quiet.
+	r.codeWaitUntil = time.Now().Add(15 * time.Minute)
+	r.codeReplayAt = time.Now() // avoid a scheduled replay plus the explicit replay
 	if r.credential != nil {
 		previousCode := r.credential.PairingCode
 		binding, err := r.refreshBindingLocked()
@@ -59,6 +66,7 @@ func (r *Recorder) beginCode(cid, mac string) (Binding, error) {
 		return Binding{}, err
 	}
 	r.bindingNotice = true
+	r.codeWaitUntil = time.Now().Add(15 * time.Minute)
 	r.credential = &value
 	r.options.DeviceToken = ""
 	return r.initiatePairingLocked()
@@ -69,4 +77,10 @@ func (r *Recorder) notifyCode(renewed bool) {
 		kind = "binding-code-renewed"
 	}
 	r.notify(kind, r.binding.PairingCode)
+	r.codeReplayAt = time.Now()
+}
+
+func (r *Recorder) notifyCodeReminder() {
+	r.notify("binding-code-reminder", r.binding.PairingCode)
+	r.codeReplayAt = time.Now()
 }

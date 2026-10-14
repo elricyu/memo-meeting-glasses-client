@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // No credential or unlock password is written as plaintext on the glasses.
@@ -225,7 +226,7 @@ func (r *Recorder) initiatePairingLocked() (Binding, error) {
 		return Binding{}, err
 	}
 	r.binding = Binding{State: "PENDING", PairingCode: result.PairingCode, ExpiresAt: result.ExpiresAt, DeviceID: result.DeviceID}
-	if value.CodeBinding {
+	if value.CodeBinding && time.Now().Before(r.codeWaitUntil) {
 		r.notifyCode(renewed)
 	}
 	return r.binding, nil
@@ -274,6 +275,10 @@ func (r *Recorder) refreshBindingLocked() (Binding, error) {
 	r.binding.DeviceID = result.DeviceID
 	if result.Status == "BOUND" || result.Status == "REVOKED" {
 		r.binding.PairingCode = ""
+		r.codeWaitUntil = time.Time{}
+	}
+	if result.Status == "PENDING" && r.credential.CodeBinding && time.Now().Before(r.codeWaitUntil) && time.Since(r.codeReplayAt) >= codeReplayInterval {
+		r.notifyCodeReminder()
 	}
 	if r.cancel == nil {
 		if result.Status == "BOUND" {

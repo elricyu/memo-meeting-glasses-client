@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestCodeBindingRenewsAndRestoresSameCredential(t *testing.T) {
@@ -69,6 +70,32 @@ func TestCodeBindingRenewsAndRestoresSameCredential(t *testing.T) {
 	if allocations.Load() != 1 {
 		t.Fatal("repeated command allocated another code")
 	}
+	// Frequent polling does not flood speech; a due reminder reuses the same code.
+	eventsBefore, _ := os.ReadFile(events)
+	recorder.codeReplayAt = time.Now().Add(-31 * time.Second)
+	if _, err = recorder.RefreshBinding(); err != nil {
+		t.Fatal(err)
+	}
+	eventsAfter, _ := os.ReadFile(events)
+	if strings.Count(string(eventsAfter), "binding-code-reminder 0382") != strings.Count(string(eventsBefore), "binding-code-reminder 0382")+1 || allocations.Load() != 1 {
+		t.Fatal("reminder did not reuse the valid code")
+	}
+	if _, err = recorder.RefreshBinding(); err != nil {
+		t.Fatal(err)
+	}
+	noFlood, _ := os.ReadFile(events)
+	if string(noFlood) != string(eventsAfter) {
+		t.Fatal("polling flooded voice prompts")
+	}
+	recorder.codeWaitUntil = time.Now().Add(-time.Second)
+	recorder.codeReplayAt = time.Now().Add(-31 * time.Second)
+	if _, err = recorder.RefreshBinding(); err != nil {
+		t.Fatal(err)
+	}
+	noTimeoutReplay, _ := os.ReadFile(events)
+	if string(noTimeoutReplay) != string(eventsAfter) {
+		t.Fatal("reminder continued after wait timeout")
+	}
 	recorder, err = NewRecorder(options)
 	if err != nil {
 		t.Fatal(err)
@@ -76,6 +103,10 @@ func TestCodeBindingRenewsAndRestoresSameCredential(t *testing.T) {
 	binding, err = recorder.RefreshBinding()
 	if err != nil || binding.PairingCode != "0382" || allocations.Load() != 1 {
 		t.Fatalf("restoration: %+v %v", binding, err)
+	}
+	// Resume by explicit opening after restoration; that alone arms reminders.
+	if _, err = recorder.beginCode("client", "02:11:22:33:44:55"); err != nil {
+		t.Fatal(err)
 	}
 	expired.Store(true)
 	binding, err = recorder.RefreshBinding()
@@ -86,10 +117,16 @@ func TestCodeBindingRenewsAndRestoresSameCredential(t *testing.T) {
 	if !strings.Contains(string(eventsData), "binding-code 0382") || !strings.Contains(string(eventsData), "binding-code-renewed 9021") {
 		t.Fatalf("missing voice guidance: %s", eventsData)
 	}
+	beforeBound, _ := os.ReadFile(events)
+	recorder.codeReplayAt = time.Now().Add(-31 * time.Second)
 	bound.Store(true)
 	binding, err = recorder.RefreshBinding()
 	if err != nil || binding.State != "BOUND" || binding.PairingCode != "" || recorder.options.DeviceToken != first.DeviceToken {
 		t.Fatalf("bound: %+v %v", binding, err)
+	}
+	afterBound, _ := os.ReadFile(events)
+	if string(beforeBound) != string(afterBound) || !recorder.codeWaitUntil.IsZero() {
+		t.Fatal("reminder continued after binding")
 	}
 	encrypted, _ := os.ReadFile(filepath.Join(root, "scan-credentials.enc"))
 	if strings.Contains(string(encrypted), first.DeviceToken) {
@@ -97,5 +134,33 @@ func TestCodeBindingRenewsAndRestoresSameCredential(t *testing.T) {
 	}
 	if recorder.Status().State != "idle" {
 		t.Fatal("binding alone started recording without an active open command")
+	}
+}
+
+func TestCodeBindingAfterRevocationStillAnnounces(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			json.NewEncoder(w).Encode(map[string]string{"status": "REVOKED", "deviceId": "old"})
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"pairingId": "new", "pairingCode": "0123", "deviceId": "new", "expiresAt": "2099-01-01T00:00:00Z"})
+	}))
+	defer server.Close()
+	root := t.TempDir()
+	events := filepath.Join(root, "events")
+	helper := filepath.Join(root, "notify")
+	os.WriteFile(helper, []byte("#!/bin/sh\nprintf '%s %s\\n' \"$1\" \"$2\" >> '"+events+"'\n"), 0700)
+	recorder, err := NewRecorder(Options{Server: server.URL, DataDir: filepath.Join(root, "audio"), NotifyHelper: helper})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorder.credential = &credential{PairingID: "old", DeviceToken: "old-token", CodeBinding: true}
+	binding, err := recorder.beginCode("client", "02:11:22:33:44:55")
+	if err != nil || binding.State != "PENDING" {
+		t.Fatalf("rebind: %+v %v", binding, err)
+	}
+	data, _ := os.ReadFile(events)
+	if !strings.Contains(string(data), "binding-code 0123") {
+		t.Fatalf("no code announcement after revocation: %q", data)
 	}
 }

@@ -47,6 +47,8 @@ type Recorder struct {
 	scanMode       bool
 	scanning       bool
 	bindingNotice  bool
+	codeReplayAt   time.Time
+	codeWaitUntil  time.Time
 }
 
 func NewRecorder(options Options) (*Recorder, error) {

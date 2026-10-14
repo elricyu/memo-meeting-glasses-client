@@ -5,12 +5,15 @@
 /* Documented SDK API, exported by the pinned library but missing in its header. */
 extern int ai_audio_play_toast_text(const char *text);
 int main(int argc,char **argv){
- if(argc==3 && (strcmp(argv[1],"binding-code")==0 || strcmp(argv[1],"binding-code-renewed")==0)){
+ if(argc==3 && (strcmp(argv[1],"binding-code")==0 || strcmp(argv[1],"binding-code-renewed")==0 || strcmp(argv[1],"binding-code-reminder")==0)){
   if(strlen(argv[2])!=4)return 2;
   const char *digits[]={"零","一","二","三","四","五","六","七","八","九"};
   for(int i=0;i<4;i++)if(argv[2][i]<'0'||argv[2][i]>'9')return 2;
   char text[512];
-  snprintf(text,sizeof(text),"%s，%s，%s，%s，%s。验证码五分钟内有效，请登录会议网页，打开绑定眼镜，输入验证码。绑定后将自动开始会议记录。",
+  if(strcmp(argv[1],"binding-code-reminder")==0)
+   snprintf(text,sizeof(text),"当前验证码是，%s，%s，%s，%s。请在网页输入验证码完成绑定。",
+    digits[argv[2][0]-'0'],digits[argv[2][1]-'0'],digits[argv[2][2]-'0'],digits[argv[2][3]-'0']);
+  else snprintf(text,sizeof(text),"%s，%s，%s，%s，%s。验证码五分钟内有效，请登录会议网页，打开绑定眼镜，输入验证码。绑定后将自动开始会议记录。",
    strcmp(argv[1],"binding-code-renewed")==0?"原验证码已过期，新的验证码是":"验证码是",
    digits[argv[2][0]-'0'],digits[argv[2][1]-'0'],digits[argv[2][2]-'0'],digits[argv[2][3]-'0']);
   return ai_audio_play_toast_text(text)==AI_AUDIO_SUCCESS?0:1;

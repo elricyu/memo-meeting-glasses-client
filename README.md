@@ -2,19 +2,19 @@
 
 专为 [OpenSource-Ai-Glasses](https://github.com/Iam5tillLearning/OpenSource-Ai-Glasses) 项目的 RV1106B 开源眼镜编写的 ARM Linux 会议记录应用，使用现有固件的音频镜像、相机和语音设备函数。原有物理按钮交互保留，安装无需重刷固件。
 
-配套服务及网页在独立 `memo-meeting-server` 仓库维护；仓库地址将在 GitHub 项目创建后补充。用户在网页扫码绑定账号，再通过“打开会议记录 / 关闭会议记录”控制录音。
+配套服务及网页在独立 [memo-meeting-server](https://github.com/elricyu/memo-meeting-server) 仓库维护。用户在网页扫码绑定账号，再通过“打开会议记录 / 关闭会议记录”控制录音。
 
 ## 默认线上服务
 
 眼镜客户端默认连接 [https://memo-meeting.easymr.cn](https://memo-meeting.easymr.cn)。安装应用后，在网站注册账号，在「我的眼镜」生成二维码并完成扫码确认绑定，即可使用“打开会议记录 / 关闭会议记录”。使用此实例无需自行部署后端或填写 AI Key。
 
-如需使用自己的服务，可以部署 `memo-meeting-server`，将设备 `meeting.env` 中的 `MEMO_SERVER` 改为自己的 HTTPS 服务地址，并配置对应可信 CA。账号与设备绑定在所连接的服务端管理，更换实例后需在新实例注册账号并绑定眼镜。
+如需使用自己的服务，可以部署 [memo-meeting-server](https://github.com/elricyu/memo-meeting-server)，将设备 `meeting.env` 中的 `MEMO_SERVER` 改为自己的 HTTPS 服务地址，并配置对应可信 CA。账号与设备绑定在所连接的服务端管理，更换实例后需在新实例注册账号并绑定眼镜。
 
 ## 关联项目
 
 - [OpenSource-Ai-Glasses](https://github.com/Iam5tillLearning/OpenSource-Ai-Glasses)：本应用运行的眼镜平台，提供固件、SDK 和硬件相关说明。
-- `memo-meeting-glasses-client`（本仓库）：安装在眼镜上的会议记录应用。
-- `memo-meeting-server`：配套后端与 Web，负责账号绑定、音频接收、实时转录和会议纪要。
+- [memo-meeting-glasses-client](https://github.com/elricyu/memo-meeting-glasses-client)（本仓库）：安装在眼镜上的会议记录应用。
+- [memo-meeting-server](https://github.com/elricyu/memo-meeting-server)：配套后端与 Web，负责账号绑定、音频接收、实时转录和会议纪要。
 
 眼镜平台的配置与固件资料请查阅上游项目；本应用的安装和使用请查阅本仓库文档。固件兼容性以实际接口和验收结果为准。
 

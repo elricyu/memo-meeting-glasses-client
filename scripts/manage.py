@@ -8,6 +8,7 @@ import re
 import shlex
 import subprocess
 import tempfile
+import time
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,12 +58,20 @@ def verify_package(root):
         raise RuntimeError('校验清单缺少安装必需文件')
 
 
+def validated_host_epoch(now=None):
+    epoch = int(time.time() if now is None else now)
+    if not 1735689600 <= epoch < 4102444800:
+        raise RuntimeError('安装电脑时间异常，请先设置正确的日期和时间')
+    return epoch
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['install', 'upgrade', 'rollback', 'uninstall', 'check'])
     parser.add_argument('--serial', default=os.environ.get('ADB_SERIAL'))
     parser.add_argument('--server', help='首次安装的 HTTPS 地址；升级保留原配置')
     parser.add_argument('--ca', type=Path, help='首次安装的可信 PEM CA 文件')
+    parser.add_argument('--no-sync-time', action='store_true', help='不使用电脑 UTC 时间校正眼镜；仍执行 HTTPS 校验')
     args = parser.parse_args()
     if (args.server or args.ca) and args.action != 'install':
         parser.error('--server/--ca 只用于首次安装')
@@ -133,6 +142,9 @@ def main():
                 adb('push', str(work / 'meeting.env'), stage + '/meeting.env')
                 adb('push', str(args.ca or ROOT / 'certs/ca-certificates.crt'), stage + '/ca-certificates.crt')
             adb('push', str(ROOT / 'device/manage-device.sh'), stage + '/manage-device.sh')
+            if args.action != 'uninstall' and not args.no_sync_time:
+                (work / 'host-epoch').write_text(str(validated_host_epoch()) + '\n')
+                adb('push', str(work / 'host-epoch'), stage + '/host-epoch')
             print(shell('sh ' + stage + '/manage-device.sh ' + args.action + ' ' + stage))
         except BaseException:
             print('设备事务目录已保留用于恢复：' + stage)

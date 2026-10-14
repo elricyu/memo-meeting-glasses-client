@@ -32,7 +32,7 @@
 
 预编译 Beta 安装包在 [GitHub Releases](https://github.com/elricyu/memo-meeting-glasses-client/releases) 提供。下载 ZIP 并完整解压，运行 `bash install.sh install`（Linux/macOS）或 `powershell -ExecutionPolicy Bypass -File .\install.ps1 install`（Windows）。`dist/` 构建产物不提交源码仓库。安装步骤见 [安装说明](docs/install.md)，日常使用见 [用户指南](docs/user-guide.md)。
 
-电脑需要 ADB 和 Python 3.9+；Windows 提供 PowerShell 入口，Linux/macOS 提供 Bash 入口。完整 Release 安装包包含默认服务配置、可信 CA、程序及语音函数，一次安装后注册账号并扫码绑定即可使用。支持升级、回退和保留数据卸载。
+安装电脑的日期时间须正确。Beta.2 在眼镜空闲时通过 USB 校正异常的 UTC 时间，再执行 HTTPS 证书验证。电脑需要 ADB 和 Python 3.9+；Windows 提供 PowerShell 入口，Linux/macOS 提供 Bash 入口。完整 Release 安装包包含默认服务配置、可信 CA、程序及语音函数，一次安装后注册账号并扫码绑定即可使用。支持升级、回退和保留数据卸载。
 
 ## 从源码构建
 

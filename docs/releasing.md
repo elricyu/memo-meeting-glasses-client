@@ -1,6 +1,6 @@
 # 发布
 
-本版本：`v0.1.0-beta.1`。源码标签与预编译安装包一起发布，二进制、SDK、运行数据不进入源码 Git。
+本版本：`v0.1.0-beta.2`。源码标签与预编译安装包一起发布，二进制、SDK、运行数据不进入源码 Git。
 
 ```bash
 make test arm camera notify media GO=/path/to/go CAMERA_CC=/path/to/compiler SDK_DIR=/path/to/sdk

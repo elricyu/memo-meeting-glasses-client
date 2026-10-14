@@ -77,6 +77,24 @@ fi
 if [ -f "$STAGE/registry.original" ]; then
  [ "$(cat "$REGISTRY")" = "$(cat "$STAGE/registry.original")" ] || { echo '语音清单已被其他应用修改，请重试'; exit 1; }
 fi
+# TLS validity requires a sane clock. USB installer supplies the trusted computer's UTC.
+# Perform only after refusing recording/binding/unknown processes, before code changes.
+if [ "$ACTION" != uninstall ] && [ -f "$STAGE/host-epoch" ]; then
+ read -r host_epoch < "$STAGE/host-epoch"
+ case "$host_epoch" in ''|*[!0-9]*) echo '电脑时间参数无效，未修改应用'; exit 1;; esac
+ [ "$host_epoch" -ge 1735689600 ] && [ "$host_epoch" -lt 4102444800 ] || { echo '电脑时间异常，未修改应用'; exit 1; }
+ device_epoch=$(date -u +%s)
+ offset=$((device_epoch - host_epoch))
+ if [ "$offset" -lt -300 ] || [ "$offset" -gt 300 ]; then
+  echo '眼镜时间与电脑相差超过5分钟，正在通过 USB 校正 UTC 时间'
+  date -u -s "@$host_epoch" >/dev/null || { echo '眼镜校时失败，请检查权限；未修改应用'; exit 1; }
+  device_epoch=$(date -u +%s)
+  offset=$((device_epoch - host_epoch))
+  [ "$offset" -ge -30 ] && [ "$offset" -le 30 ] || { echo '眼镜校时未生效，未修改应用'; exit 1; }
+ else
+  echo '眼镜 UTC 时间检查通过'
+ fi
+fi
 mkdir "$STAGE/previous"
 for name in $FILES; do
  [ ! -f "$APP/$name" ] || cp -p "$APP/$name" "$STAGE/previous/$name"

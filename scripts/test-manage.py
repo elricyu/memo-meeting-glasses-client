@@ -13,6 +13,12 @@ spec.loader.exec_module(manage)
 
 
 class ManageTests(unittest.TestCase):
+    def test_host_clock_bounds(self):
+        self.assertEqual(manage.validated_host_epoch(1791967049), 1791967049)
+        for bad in (0, 1735689599, 4102444800):
+            with self.assertRaises(RuntimeError):
+                manage.validated_host_epoch(bad)
+
     def test_registry_ownership(self):
         source = '[device_function]\nname=video\ncustom=preserve\n\n[device_function]\nname=open_meeting_recording\nold=1\n'
         merged = manage.merge_registry(source, '[device_function]\nname=open_meeting_recording\nnew=1')
@@ -43,12 +49,17 @@ class ManageTests(unittest.TestCase):
             busybox = bins / 'busybox'; busybox.write_text('#!/bin/sh\nexec "$@"\n'); busybox.chmod(0o755)
             script = (manage.ROOT / 'device/manage-device.sh').read_text().replace('APP=/userdata/apps/memo-meeting', 'APP=' + str(app)).replace('REGISTRY=/usr/share/ai_core_device_functions.conf', 'REGISTRY=' + str(registry))
             script_path = root / 'transaction.sh'; script_path.write_text(script)
+            clock = root / 'clock'; clock.write_text('1000')
+            date = bins / 'date'
+            date.write_text('#!/bin/sh\nif [ "$2" = -s ]; then echo "${3#@}" > "' + str(clock) + '"; else cat "' + str(clock) + '"; fi\n')
+            date.chmod(0o755)
             credentials = app / 'scan-credentials.enc'; credentials.write_text('never-touch')
             audio = app / 'audio'; audio.mkdir(); (audio / 'record.wav').write_text('never-touch-audio')
             def stage(version, fail=False):
                 folder = app / ('.stage-' + version); folder.mkdir()
                 (folder / 'registry.conf').write_text('registry-' + version)
                 (folder / 'VERSION').write_text(version)
+                (folder / 'host-epoch').write_text('1791967049\n')
                 (folder / 'meeting.env').write_text('MEMO_SERVER=https://example.com\n')
                 (folder / 'ca-certificates.crt').write_text('certificate')
                 for name in ['memo-capture-qr', 'memo-notify', 'memo-media-state', 'memo-meeting-open.sh', 'memo-meeting-close.sh', 'memo-meeting-bind.sh']:
@@ -65,6 +76,10 @@ class ManageTests(unittest.TestCase):
                 self.assertEqual((audio / 'record.wav').read_text(), 'never-touch-audio')
                 self.assertFalse((app / '.manage.lock').exists())
             run('install', stage('v1'))
+            self.assertEqual((app / 'VERSION').read_text(), 'v1')
+            self.assertEqual(clock.read_text().strip(), '1791967049')
+            invalid = stage('invalid-time'); (invalid / 'host-epoch').write_text('0\n')
+            run('upgrade', invalid, 1)
             self.assertEqual((app / 'VERSION').read_text(), 'v1')
             run('upgrade', stage('bad', True), 1)
             self.assertEqual((app / 'VERSION').read_text(), 'v1')

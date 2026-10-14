@@ -1,12 +1,12 @@
 # 安装、升级、回退与卸载
 
-下载 GitHub Release 中的 `memo-meeting-glasses-client-v0.1.0-beta.1.zip` 并完整解压。不要下载 Source code 代替安装包。包内四个程序已编译，无需 Go、SDK 或交叉编译器。
+下载 GitHub Release 中的 `memo-meeting-glasses-client-v0.1.0-beta.2.zip` 并完整解压。不要下载 Source code 代替安装包。包内四个程序已编译，无需 Go、SDK 或交叉编译器。
 
 ## 电脑与设备准备
 
 - 安装 Python 3.9+ 和 Android SDK Platform Tools（ADB），确保它们在 PATH。
 - Windows 使用 PowerShell；Linux/macOS 使用 Bash。
-- 眼镜已联网，固件原有语音 AI 服务正常，设备时间正确。
+- 眼镜已联网，固件原有语音 AI 服务正常；安装电脑日期和时间正确。
 - USB 连接后执行 `adb devices`。只有一台可用设备时自动选择；有多台时传入 `--serial 设备序列号`。
 
 推荐先使用 Release 附带的 `SHA256SUMS` 校验 ZIP：Linux 使用 `sha256sum -c SHA256SUMS`，macOS 使用 `shasum -a 256 -c SHA256SUMS`，Windows 使用 `Get-FileHash 文件.zip -Algorithm SHA256` 并比对。安装工具还会检查解压包内的文件清单。
@@ -25,7 +25,7 @@ bash install.sh install
 powershell -ExecutionPolicy Bypass -File .\install.ps1 install
 ```
 
-默认连接 [线上实例](https://memo-meeting.easymr.cn)，随包提供服务配置和可信 CA。安装会检查硬件接口、可用空间、交互状态及设备到服务器的 HTTPS 连接；合并会议语音函数，保留原功能。不会重刷固件、修改原固件源码或重启设备，也不会创建会议或开启录音。
+默认连接 [线上实例](https://memo-meeting.easymr.cn)，随包提供服务配置和可信 CA。安装会检查硬件接口、可用空间和交互状态；设备空闲且与电脑时间偏差超过 5 分钟时，通过 USB 使用电脑 UTC 校时，再检查设备到服务器的 HTTPS 连接；合并会议语音函数，保留原功能。不会重刷固件、修改原固件源码或重启设备，也不会创建会议或开启录音。
 
 首次安装也会启动本应用后台服务。出现 `MEMO_MANAGE_OK install` 表示完成；随后重新建立固件原有 AI 语音连接，让新函数清单上报。注册网站账号并扫码绑定，见 [用户指南](user-guide.md)。
 
@@ -53,3 +53,11 @@ Windows 使用同样的操作参数替换 `install.sh` 为 `install.ps1`。正�
 失败时安装工具尝试恢复本次操作前的程序和语音配置，并保留 `.stage-*` 事务目录用于排查。不要在失败原因未明确前删除备份。服务日志为 `service.log`，本地录音位于 `audio/`；公开反馈前需脱敏。
 
 GitHub 安装包是 Beta 版本；真实拾音与语音意图效果受原固件和云端服务影响。断网不会自动补传。
+
+## 证书时间错误与重启
+
+`current time 1970 ... is before ...` 表示眼镜系统时间未初始化，不代表需要关闭 HTTPS 验证。Beta.2 安装器在修改程序前检查并校时。电脑时间必须正确；`--no-sync-time` 可禁用自动校时，但不会关闭证书校验。
+
+旧 Beta.1 用户可先用 ADB 将设备 UTC 时间设为正确值，再重新安装；推荐改用 Beta.2。失败的 `.stage-*` 目录不是成功安装标志，不需要重刷固件。
+
+本次校时是系统运行期设置，不保证断电后保留。固件应在开机联网后自行同步时间；若设备重启再次回到 1970，可运行新安装器 `upgrade` 重新校时。当前不修改固件开机脚本，也不在无法验证服务器身份时自动从 HTTP 获取时间。

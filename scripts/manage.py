@@ -93,12 +93,12 @@ def main():
         return body.strip()
 
     if args.action == 'check':
-        print(shell('sh -c ' + shlex.quote('uname -m; test -x ' + APP + '/memo-glasses && ' + APP + '/memo-glasses status')))
+        print(shell('sh -c ' + shlex.quote('busybox head -n 10 /proc/cpuinfo; test -x ' + APP + '/memo-glasses && ' + APP + '/memo-glasses status')))
         return
     if args.action in ('install', 'upgrade'):
         verify_package(ROOT)
     # Only query read-only firmware interfaces; no recording or camera capture.
-    shell('test "$(uname -m)" = armv7l && test -f ' + REGISTRY)
+    shell('busybox grep -q ARMv7 /proc/cpuinfo && test -f ' + REGISTRY)
     if args.action in ('install', 'upgrade'):
         shell('test -S /tmp/ai-core_audio_stream && test -S /tmp/ai-core_audio_ctrl')
     if args.action == 'install' and (args.server or args.ca):

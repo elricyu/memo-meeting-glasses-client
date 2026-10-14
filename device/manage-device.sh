@@ -28,7 +28,7 @@ cleanup() {
      while kill -0 "$pid" 2>/dev/null && [ "$count" -lt 20 ]; do count=$((count+1)); sleep 1; done
      if kill -0 "$pid" 2>/dev/null; then
       echo '新进程未停止；保留事务备份，未覆盖运行文件' >&2
-      rmdir "$LOCK"; exit 1
+      rm -rf "$LOCK"; exit 1
      fi
     fi;;
    esac
@@ -39,7 +39,7 @@ cleanup() {
   cp -p "$STAGE/previous/registry.conf" "$REGISTRY"
   if [ "$was_running" = 1 ]; then "$APP/memo-meeting-daemon.sh" || echo '原服务启动失败，请检查配置' >&2; fi
  fi
- rmdir "$LOCK" || true
+ rm -rf "$LOCK" || true
  exit "$rc"
 }
 trap cleanup EXIT
@@ -75,7 +75,7 @@ if [ "$was_running" = 1 ]; then
  if busybox grep -Eq '"state":"(SCANNING|PENDING)"' "$STAGE/binding"; then echo '正在绑定，请稍后再操作'; exit 1; fi
 fi
 if [ -f "$STAGE/registry.original" ]; then
- busybox cmp "$REGISTRY" "$STAGE/registry.original" || { echo '语音清单已被其他应用修改，请重试'; exit 1; }
+ [ "$(cat "$REGISTRY")" = "$(cat "$STAGE/registry.original")" ] || { echo '语音清单已被其他应用修改，请重试'; exit 1; }
 fi
 mkdir "$STAGE/previous"
 for name in $FILES; do
